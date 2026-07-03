@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 namespace project.db
 {
     /// <summary>
-    /// класс, который 
+    /// класс, который хранится в бд
     /// </summary>
-    public struct Transaction
+    public class Transaction
     {
         private static uint _newId = 1; // id добавленной транзакции
         private static HashSet<uint> _allId = new HashSet<uint>(); // все id 
@@ -83,56 +83,51 @@ namespace project.db
         /// <param name="priceInCurrency">цена за шт в валюте</param>
         /// <param name="currency">код валюты</param>
         /// <param name="region">номер региона</param>
-        public Transaction(DateTime date, uint prodId, string name, uint count, double priceInCurrency, string currency, byte region)
+        private Transaction(DateTime date, uint prodId, string name, uint count, double priceInCurrency, string currency, double pricePerUnit, byte region, uint id)
         {
-            if (priceInCurrency <= 0)
-            {
-                throw new ArgumentException("Цена не может быть <= 0");
-            }
-            Id = _newId;
-            Date = date;
-            ProdId = prodId;
-            Name = name;
-            Count = count;
-            PriceInCurrency = priceInCurrency;
-            Currency = currency;
-            PricePerUnit = CurrencyConverter.CurToRub(PriceInCurrency, Currency, date);
-            Region = region;
-            ++_newId;
-        }
-        /// <summary>
-        /// конструктор класса
-        /// </summary>
-        /// <param name="id">id транзакции</param>
-        /// <param name="date">дата транзакции</param>
-        /// <param name="prodId">id товара</param>
-        /// <param name="name">наименование товара</param>
-        /// <param name="count">количество товаров</param>
-        /// <param name="priceInRub">цена за шт в рублях</param>
-        /// <param name="priceInCurrency">цена за шт в валюте</param>
-        /// <param name="currency">код валюты</param>
-        /// <param name="region">номер региона</param>
-        public Transaction(uint id, DateTime date, uint prodId, string name, uint count, double priceInRub, double priceInCurrency, string currency, byte region)
-        {
-            if (priceInCurrency <= 0 || priceInRub <= 0)
-            {
-                throw new ArgumentException("Цена не может быть <= 0");
-            }
-            _newId = Math.Max(id + 1, _newId);
             Id = id;
             Date = date;
             ProdId = prodId;
             Name = name;
             Count = count;
-            PricePerUnit = priceInRub;
             PriceInCurrency = priceInCurrency;
             Currency = currency;
+            PricePerUnit = pricePerUnit;
             Region = region;
-            if (_allId.Contains(Id))
+        }
+
+        /// <summary>
+        /// Асинхронное создание новой транзакции с автоматическим расчетом курса в рубли
+        /// </summary>
+        /// /// <param name="date">дата транзакции</param>
+        /// <param name="prodId">id товара</param>
+        /// <param name="name">наименование товара</param>
+        /// <param name="count">количество товаров</param>
+        /// <param name="priceInCurrency">цена за шт в валюте</param>
+        /// <param name="currency">код валюты</param>
+        /// <param name="region">номер региона</param>
+        public static async Task<Transaction> CreateAsync(DateTime date, uint prodId, string name, uint count, double priceInCurrency, string currency, byte region, uint? id = null, double pricePerUnit = -1)
+        {
+            if (priceInCurrency <= 0)
             {
-                throw new Exception("Не может быть 2 транзакции с одинаковыми id");
+                throw new ArgumentException("Цена не может быть <= 0");
             }
-            _allId.Add(Id);
+
+            pricePerUnit = pricePerUnit == -1 ? await CurrencyConverter.CurToRub(priceInCurrency, currency, date) : pricePerUnit;
+            if (id == null)
+            {
+                id = _newId++;
+            } else
+            {
+                if (_allId.Contains((uint)id))
+                {
+                    throw new Exception("Не может быть 2 транзакции с одинаковыми id");
+                }
+                _allId.Add((uint)id);
+            }
+
+            // Вызываем приватный конструктор и возвращаем готовый объект
+            return new Transaction(date, prodId, name, count, priceInCurrency, currency, pricePerUnit, region, (uint)id);
         }
         public override string ToString()
         {

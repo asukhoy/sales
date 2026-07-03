@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -13,6 +14,7 @@ namespace project.DbClasses
     public static class CurrencyConverter
     {
         private static List<string> _currencies;
+        private static readonly HttpClient _httpClient = new HttpClient();
         /// <summary>
         /// метод, который использует API центробанка возвращает курс валюты
         /// </summary>
@@ -26,14 +28,11 @@ namespace project.DbClasses
             {
                 return 1;
             }
-            string day = dt.Day <= 9 ? $"0{dt.Day}" : dt.Day.ToString();
-            string month = dt.Month <= 9 ? $"0{dt.Month}" : dt.Month.ToString();
-            string date = $"{day}/{month}/{dt.Year}";
+            string date = dt.ToString("dd/MM/yyyy");
             // url для GET запроса
             string url = $"https://www.cbr.ru/scripts/XML_daily.asp?date_req={date}";
 
-            using HttpClient client = new HttpClient();
-            HttpResponseMessage response = await client.GetAsync(url); // GET запрос
+            HttpResponseMessage response = await _httpClient.GetAsync(url); // GET запрос
 
             if (!response.IsSuccessStatusCode)
             {
@@ -48,7 +47,7 @@ namespace project.DbClasses
 
             // находим нужную валюту по CharCode
             var currency = doc.Descendants("Valute")
-                .FirstOrDefault(v => (string)v.Element("CharCode") == currencyCode);
+                .FirstOrDefault(v => (string?)v.Element("CharCode") == currencyCode);
 
             if (currency == null)
             {
@@ -56,11 +55,14 @@ namespace project.DbClasses
             }
 
             // Извлекаем курс из элемента <Value>
-            string rateString = currency.Element("Value")?.Value; // Меняем запятую на точку
-            double rate;
-            if (double.TryParse(rateString, out rate))
+            string? rateString = currency.Element("Value")?.Value; // Меняем запятую на точку
+            string? nominalString = currency.Element("Nominal")?.Value;
+            CultureInfo cbrCulture = new CultureInfo("ru-RU");
+            if (double.TryParse(rateString, cbrCulture, out double rate) &&
+                double.TryParse(nominalString, cbrCulture, out double nominal))
             {
-                return rate;
+                // Курс делим на номинал (актуально для валют вроде йены или тенге, где курс идет за 100 или 1000 единиц)
+                return rate / nominal;
             }
             else
             {
@@ -74,7 +76,7 @@ namespace project.DbClasses
         /// <param name="currencyCode">код валюты</param>
         /// <param name="date">дата транзакции</param>
         /// <returns>сумма в валюте</returns>
-        public static double RubToCur(double count, string currencyCode, DateTime date)
+        public static async Task<double> RubToCur(double count, string currencyCode, DateTime date)
         {
             var rate = GetExchangeRate(date, currencyCode);
             return count / rate.Result;
@@ -86,7 +88,7 @@ namespace project.DbClasses
         /// <param name="currencyCode">код валюты</param>
         /// <param name="date">дата транзакции</param>
         /// <returns>сумма в рублях</returns>
-        public static double CurToRub(double count, string currencyCode, DateTime date)
+        public static async Task<double> CurToRub(double count, string currencyCode, DateTime date)
         {
             var rate = GetExchangeRate(date, currencyCode);
             return count * rate.Result;

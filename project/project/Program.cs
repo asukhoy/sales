@@ -8,7 +8,7 @@ using project.edit;
 
 public static class Program
 {
-    public static void Main()
+    public static async Task Main()
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance); // устанавливаем нужную кодировку
         CurrencyConverter.GetAllCurrencyCodes(); // загружаем все возможные валюты
@@ -25,7 +25,8 @@ public static class Program
                 switch (currKey.Key)
                 {
                     case ConsoleKey.D1:
-                        isLoaded = ConsoleHandler.DownloadData(ref  transactions); // загрузка данных и её результат
+                        transactions = await ConsoleHandler.DownloadData(); // загрузка данных и её результат
+                        isLoaded = transactions.Count != 0;
                         break;
                     case ConsoleKey.Backspace: // выход из программы
                         Console.WriteLine("Работа завершена");
@@ -42,13 +43,17 @@ public static class Program
                 switch (currKey.Key)
                 {
                     case ConsoleKey.D: // загрузка новых данных, в случае неудачи сохраняется старая бд
-                        ConsoleHandler.DownloadData(ref transactions);
+                        var tmp = await ConsoleHandler.DownloadData();
+                        if (tmp.Count != 0)
+                        {
+                            transactions = tmp;
+                        }
                         break;
                     case ConsoleKey.D1: // вывод транзакций
                         ConsoleHandler.PrintInfo(ref transactions); break;
                     case ConsoleKey.D2: // добавление транзакции
                         try {
-                            ConsoleHandler.Add(ref transactions);
+                            await ConsoleHandler.Add(transactions);
                         } catch (Exception e)
                         {
                             Console.WriteLine(e.Message);
@@ -57,11 +62,11 @@ public static class Program
                     case ConsoleKey.D3: // удаление транзакции
                         ConsoleHandler.Delete(ref transactions); break;
                     case ConsoleKey.D4: // изменение транзакции
-                        ConsoleHandler.Edit(ref transactions); break;
+                        await ConsoleHandler.Edit(transactions); break;
                     case ConsoleKey.D5: // вывод информации по регионам
-                        ConsoleHandler.PrintRegionInfo(ref transactions); break;
+                        ConsoleHandler.PrintRegionInfo(transactions); break;
                     case ConsoleKey.D6: // вывод суммы всех транзакций
-                        ConsoleHandler.PrintAllSales(ref transactions); break;
+                        await ConsoleHandler.PrintAllSales(transactions); break;
                     case ConsoleKey.D7: // вывод ABC анализа
                         ConsoleHandler.PrintABCAnalysis(ref transactions); break;
                     case ConsoleKey.D8: // вывод XYZ анализа

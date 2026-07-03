@@ -34,19 +34,24 @@ namespace project.edit {
         /// или DateTime.MinValue, если надо посчитать по курсу на дату транзакции</param>
         /// <param name="currency">валюта</param>
         /// <returns></returns>
-        public static double CalculateAllSales(ref List<Transaction> data, DateTime date, string currency)
+        public static async Task<double> CalculateAllSales(List<Transaction> data, DateTime date, string currency)
         {
-            double res = 0;
-            var date1 = date;
-            foreach (var trans in data)
+            var tasks = data.Select(async trans =>
             {
-                if (date == DateTime.MinValue)
-                {
-                    date1 = trans.Date;
-                }
-                res += trans.Count * CurrencyConverter.RubToCur(trans.PricePerUnit, currency, date1);
-            }
-            return res;
+                // Если дата не передана (MinValue), берем дату конкретной транзакции
+                DateTime targetDate = (date == DateTime.MinValue) ? trans.Date : date;
+
+                // Дожидаемся конвертации валюты для одной транзакции
+                double priceInCurrency = await CurrencyConverter.RubToCur(trans.PricePerUnit, currency, targetDate);
+
+                // Возвращаем стоимость всей позиции в этой транзакции
+                return trans.Count * priceInCurrency;
+            });
+
+            double[] results = await Task.WhenAll(tasks);
+
+            // 3. Суммируем все полученные значения
+            return results.Sum();
         }
         /// <summary>
         /// Добавление транзакции
@@ -79,7 +84,7 @@ namespace project.edit {
         /// <param name="el">элемент транзакции</param>
         /// <param name="val">новое значение</param>
         /// <exception cref="ArgumentException">выбрасывается в случае ввода некорректного id</exception>
-        public static void Edit(ref List<Transaction> data, uint id, Elements el, uint val)
+        public static async Task Edit(List<Transaction> data, uint id, Elements el, uint val)
         {
             int ind = GetById(data, id);
             if (ind == -1)
@@ -104,7 +109,7 @@ namespace project.edit {
         /// <param name="el">элемент транзакции</param>
         /// <param name="val">новое значение</param>
         /// <exception cref="ArgumentException">выбрасывается в случае ввода некорректного id</exception>
-        public static void Edit(ref List<Transaction> data, uint id, Elements el, DateTime val)
+        public static async Task Edit(List<Transaction> data, uint id, Elements el, DateTime val)
         {
             int ind = GetById(data, id);
             if (ind == -1)
@@ -123,23 +128,29 @@ namespace project.edit {
         /// <param name="el">элемент транзакции</param>
         /// <param name="val">новое значение</param>
         /// <exception cref="ArgumentException">выбрасывается в случае ввода некорректного id</exception>
-        public static void Edit(ref List<Transaction> data, uint id, Elements el, string val)
+        public static async Task Edit(List<Transaction> data, uint id, Elements el, string val)
         {
             int ind = GetById(data, id);
             if (ind == -1)
             {
                 throw new ArgumentException("Неверное id");
             }
+
             var trans = data[ind];
+
             switch (el)
             {
-                case Elements.Name: trans.Name = val; break;
+                case Elements.Name:
+                    trans.Name = val;
+                    break;
+
                 case Elements.Currency:
                     trans.Currency = val;
-                    trans.PricePerUnit = CurrencyConverter.CurToRub(trans.PriceInCurrency, val, trans.Date);
+                    trans.PricePerUnit = await CurrencyConverter.CurToRub(trans.PriceInCurrency, val, trans.Date);
                     break;
             }
-            trans.Name = val;
+
+            // Записываем обновленный объект обратно в список
             data[ind] = trans;
         }
         /// <summary>
@@ -150,7 +161,7 @@ namespace project.edit {
         /// <param name="el">элемент транзакции</param>
         /// <param name="val">новое значение</param>
         /// <exception cref="ArgumentException">выбрасывается в случае ввода некорректного id</exception>
-        public static void Edit(ref List<Transaction> data, uint id, Elements el, double val)
+        public static async Task Edit(List<Transaction> data, uint id, Elements el, double val)
         {
             int ind = GetById(data, id);
             if (ind == -1)
@@ -162,11 +173,11 @@ namespace project.edit {
             {
                 case Elements.PricePerUnit:
                     trans.PricePerUnit = val;
-                    trans.PriceInCurrency = CurrencyConverter.RubToCur(val, trans.Currency, trans.Date);
+                    trans.PriceInCurrency = await CurrencyConverter.RubToCur(val, trans.Currency, trans.Date);
                     break;
                 case Elements.PriceInCurrency:
                     trans.PriceInCurrency = val;
-                    trans.PricePerUnit = CurrencyConverter.CurToRub(val, trans.Currency, trans.Date);
+                    trans.PricePerUnit = await CurrencyConverter.CurToRub(val, trans.Currency, trans.Date);
                     break;
             }
             data[ind] = trans;
@@ -179,7 +190,7 @@ namespace project.edit {
         /// <param name="el">элемент транзакции</param>
         /// <param name="val">новое значение</param>
         /// <exception cref="ArgumentException">выбрасывается в случае ввода некорректного id</exception>
-        public static void Edit(ref List<Transaction> data, uint id, Elements el, byte val)
+        public static async Task Edit(List<Transaction> data, uint id, Elements el, byte val)
         {
             int ind = GetById(data, id);
             if (ind == -1)

@@ -30,58 +30,51 @@ namespace project.db
         /// <summary>
         /// загрузка данных из файла
         /// </summary>
-        /// <param name="data">список со всеми транзакциями</param>
         /// <exception cref="FileNotFoundException">выбрасываем, если пользователь не ввел путь до файла</exception>
-        public static void DownloadData (ref List<Transaction> data)
+        public static async Task<List<Transaction>> DownloadData()
         {
-            if (_currentPath == "")
+            if (string.IsNullOrEmpty(_currentPath))
             {
                 throw new FileNotFoundException("Файл не загружен");
             }
-            string[] strings = File.ReadAllLines(CurrentPath); // загрузка строк файла в массив
-            int n = strings.Length;
-            List<Transaction> tmp = new List<Transaction>(); // создание временного списка с транзакциями
-            for (int i = 0; i < n; ++i)
+
+            string[] strings = await File.ReadAllLinesAsync(_currentPath);
+
+            // cоздаем список задач для параллельной обработки строк
+            var tasks = new List<Task<Transaction>>();
+
+            for (int i = 0; i < strings.Length; ++i)
             {
-                string[] s = strings[i].Split(";"); // сплит строки по разделителю бд
+                string[] s = strings[i].Split(";");
+
                 if (s.Length == 1 && s[0] == "") { continue; }
-                if ( s.Length != 9) // проверка количества элементов транзакции
+                if (s.Length != 9)
                 {
-                    throw new ArgumentException("Неверная запись транзакции");
+                    throw new ArgumentException($"Неверная запись транзакции в строке {i + 1}");
                 }
-                // получение id
-                uint id;
-                bool f = uint.TryParse(s[0], out id);
-                // получение даты
-                DateTime dt;
-                f &= DateTime.TryParse(s[1], out dt);
-                // получение id товара
-                uint prodId;
-                f &= uint.TryParse(s[2], out prodId);
-                // получение названия товара
+
+                bool f = uint.TryParse(s[0], out uint id);
+                f &= DateTime.TryParse(s[1], out DateTime dt);
+                f &= uint.TryParse(s[2], out uint prodId);
                 string name = s[3];
-                // получение количества товаров
-                uint count;
-                f &= uint.TryParse(s[4], out count);
-                // получение цены 1шт в рублях
-                double price;
-                f &= double.TryParse(s[5], out price);
-                // получение цены 1шт в валюте
-                double priceCur;
-                f &= double.TryParse(s[6], out priceCur);
-                // получение валюты
+                f &= uint.TryParse(s[4], out uint count);
+                f &= double.TryParse(s[5], out double price); // цена в рублях из файла
+                f &= double.TryParse(s[6], out double priceCur);
                 string currency = s[7];
-                // получение региона
-                byte reg;
-                f &= byte.TryParse(s[8], out reg);
-                // проверка, что все данные верны
+                f &= byte.TryParse(s[8], out byte reg);
+
                 if (!f)
                 {
-                    throw new ArgumentException("Неверная запись транзакции");
+                    throw new ArgumentException($"Неверный формат данных в строке {i + 1}");
                 }
-                tmp.Add(new Transaction(id, dt, prodId, name, count, price, priceCur, currency, reg));
+
+                var task = Transaction.CreateAsync(dt, prodId, name, count, priceCur, currency, reg, id, price);
+                tasks.Add(task);
             }
-            data = tmp;
+
+            Transaction[] transactions = await Task.WhenAll(tasks);
+
+            return transactions.ToList();
         }
         /// <summary>
         /// Сохранение данных в файл

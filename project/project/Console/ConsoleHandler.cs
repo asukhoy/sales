@@ -48,7 +48,7 @@ namespace project.ConsoleHandler
         /// Вывод информации о суммарных продажах в регионе
         /// </summary>
         /// <param name="transactions">список транзакций</param>
-        public static void PrintRegionInfo(ref List<Transaction> transactions)
+        public static void PrintRegionInfo(List<Transaction> transactions)
         {
             int pageSize = 5;  // Количество строк на экране
             int shift = 0;     // Смещение (прокрутка)
@@ -86,7 +86,7 @@ namespace project.ConsoleHandler
                 {
                     table.AddRow(el.Region.ToString(), $"{el.Count:f2}");
                 }
-                AnsiConsole.Render(table);
+                AnsiConsole.Write(table);
 
                 Console.WriteLine("\nИспользуйте ↑ ↓ для прокрутки, 2 - Сортировка во возрастанию," +
                     " 5 - убрать сортировку, 8 - сортировка по убыванию, Backspace - выход");
@@ -190,7 +190,7 @@ namespace project.ConsoleHandler
                     string[] item = trans.ToString().Split(";");
                     table.AddRow(item);
                 }
-                AnsiConsole.Render(table);
+                AnsiConsole.Write(table);
 
                 Console.WriteLine(filter != 0 ?$"\nФильтр: {filter}" : "Фильтр не установлен");
                 Console.WriteLine("\nИспользуйте ↑ ↓ для прокрутки, F - изменить(установить) фильтр," +
@@ -343,7 +343,7 @@ namespace project.ConsoleHandler
         /// Выводит сумму всех транзакций в выбранной валюте
         /// </summary>
         /// <param name="transactions">список транзакций</param>
-        public static void PrintAllSales(ref List<Transaction> transactions)
+        public static async Task PrintAllSales(List<Transaction> transactions)
         {
             Console.WriteLine("Введите валюту, сумму продаж в которой хотите посмотреть");
             Console.WriteLine("Чтобы вернуться в главное меню, введите -1");
@@ -382,7 +382,7 @@ namespace project.ConsoleHandler
             }
             try
             {
-                var res = TransactionsHandler.CalculateAllSales(ref transactions, dt, currency);
+                var res = await TransactionsHandler.CalculateAllSales(transactions, dt, currency);
                 Console.WriteLine($"Сумма продаж в валюте {currency} равна {res:f2}");
             }
             catch (Exception ex)
@@ -474,9 +474,8 @@ namespace project.ConsoleHandler
         /// <summary>
         /// Загрузка данных из файла
         /// </summary>
-        /// <param name="transactions"></param>
         /// <returns>смогла ли программа загрузить данные</returns>
-        public static bool DownloadData(ref List<Transaction> transactions)
+        public static async Task<List<Transaction>> DownloadData()
         {
             Console.WriteLine("Введите название файла");
             string path = @"..\..\..\db\" + Console.ReadLine();
@@ -488,26 +487,25 @@ namespace project.ConsoleHandler
             catch (Exception e)
             {
                 Console.WriteLine(e.Message);
-                return false;
             }
             // попытка выгрузить данные из файла
+            List<Transaction> transactions = new List<Transaction>();
             try
             {
-                FileHandler.DownloadData(ref transactions);
+                transactions = await FileHandler.DownloadData();
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.Message);
-                return false;
             }
-            return true;
+            return transactions;
         }
         /// <summary>
         /// Добавление транзакции
         /// </summary>
         /// <param name="data">список транзакций</param>
         /// <exception cref="ArgumentException">выбрасывается в случае неверно введенной транзакции</exception>
-        public static void Add(ref List<Transaction> data)
+        public static async Task Add(List<Transaction> data)
         {
             // дальше идут блоки инициализации траназакции, в случае ввода -1, пользователя возвращает в главное меню
 
@@ -593,7 +591,8 @@ namespace project.ConsoleHandler
 
             try
             {
-                TransactionsHandler.Add(ref data, new Transaction(dt, prodId, name, count, price, currency, reg));
+                var trans = await Transaction.CreateAsync(dt, prodId, name, count, price, currency, reg);
+                TransactionsHandler.Add(ref data, trans);
             }
             catch (Exception ex)
             {
@@ -631,7 +630,7 @@ namespace project.ConsoleHandler
         /// изменение транзакции
         /// </summary>
         /// <param name="data">список транзакций</param>
-        public static void Edit(ref List<Transaction> data)
+        public static async Task Edit(List<Transaction> data)
         {
             Console.WriteLine("Введите id транзакции, которую хотите изменить");
             Console.WriteLine("Чтобы вернуться в главное меню, введите -1");
@@ -696,7 +695,7 @@ namespace project.ConsoleHandler
                     }
                     try
                     {
-                        TransactionsHandler.Edit(ref data, id, el, dt);
+                        await TransactionsHandler.Edit(data, id, el, dt);
                     }
                     catch (Exception e)
                     {
@@ -706,7 +705,7 @@ namespace project.ConsoleHandler
                 case Elements.Name:
                     try
                     {
-                        TransactionsHandler.Edit(ref data, id, el, s);
+                        await TransactionsHandler.Edit(data, id, el, s);
                     }
                     catch (Exception e)
                     {
@@ -721,7 +720,7 @@ namespace project.ConsoleHandler
                     }
                     try
                     {
-                        TransactionsHandler.Edit(ref data, id, el, s);
+                        await TransactionsHandler.Edit(data, id, el, s);
                     }
                     catch (Exception e)
                     {
@@ -741,7 +740,7 @@ namespace project.ConsoleHandler
                     }
                     try
                     {
-                        TransactionsHandler.Edit(ref data, id, el, reg);
+                        await TransactionsHandler.Edit(data, id, el, reg);
                     }
                     catch (Exception e)
                     {
@@ -761,7 +760,7 @@ namespace project.ConsoleHandler
                     }
                     try
                     {
-                        TransactionsHandler.Edit(ref data, id, el, val);
+                        await TransactionsHandler.Edit(data, id, el, val);
                     }
                     catch (Exception e)
                     {
@@ -781,7 +780,7 @@ namespace project.ConsoleHandler
                     }
                     try
                     {
-                        TransactionsHandler.Edit(ref data, id, el, val1);
+                        await TransactionsHandler.Edit(data, id, el, val1);
                     }
                     catch (Exception e)
                     {
@@ -801,7 +800,7 @@ namespace project.ConsoleHandler
                     }
                     try
                     {
-                        TransactionsHandler.Edit(ref data, id, el, val2);
+                        await TransactionsHandler.Edit(data, id, el, val2);
                     }
                     catch (Exception e)
                     {
