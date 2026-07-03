@@ -398,3 +398,10 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Артефакты сборки миграций EF Core ( bundles )
+efbundle.exe
+efbundle
+_efmigrationshistory
+
+*.csv

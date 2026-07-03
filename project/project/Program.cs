@@ -1,8 +1,8 @@
 ﻿///Сухомлин Артём Владимирович БПИ244-2 В-3
 using System;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 using project.ConsoleHandler;
-using project.db;
 using project.DbClasses;
 using project.edit;
 
@@ -14,6 +14,7 @@ public static class Program
         CurrencyConverter.GetAllCurrencyCodes(); // загружаем все возможные валюты
         bool isLoaded = false;
         List<Transaction> transactions = new List<Transaction>();
+        ConsoleHandler.IOData = new DbHandler();
         ConsoleKeyInfo currKey = new ConsoleKeyInfo('0', ConsoleKey.D0, false, false, false);
         // цикл работы программы
         while (currKey.Key != ConsoleKey.Backspace) {
@@ -26,7 +27,7 @@ public static class Program
                 {
                     case ConsoleKey.D1:
                         transactions = await ConsoleHandler.DownloadData(); // загрузка данных и её результат
-                        isLoaded = transactions.Count != 0;
+                        isLoaded = true;
                         break;
                     case ConsoleKey.Backspace: // выход из программы
                         Console.WriteLine("Работа завершена");
@@ -50,7 +51,7 @@ public static class Program
                         }
                         break;
                     case ConsoleKey.D1: // вывод транзакций
-                        ConsoleHandler.PrintInfo(ref transactions); break;
+                        ConsoleHandler.PrintInfo(transactions); break;
                     case ConsoleKey.D2: // добавление транзакции
                         try {
                             await ConsoleHandler.Add(transactions);
@@ -60,7 +61,7 @@ public static class Program
                         }
                         break;
                     case ConsoleKey.D3: // удаление транзакции
-                        ConsoleHandler.Delete(ref transactions); break;
+                        ConsoleHandler.Delete(transactions); break;
                     case ConsoleKey.D4: // изменение транзакции
                         await ConsoleHandler.Edit(transactions); break;
                     case ConsoleKey.D5: // вывод информации по регионам
@@ -68,13 +69,13 @@ public static class Program
                     case ConsoleKey.D6: // вывод суммы всех транзакций
                         await ConsoleHandler.PrintAllSales(transactions); break;
                     case ConsoleKey.D7: // вывод ABC анализа
-                        ConsoleHandler.PrintABCAnalysis(ref transactions); break;
+                        ConsoleHandler.PrintABCAnalysis(transactions); break;
                     case ConsoleKey.D8: // вывод XYZ анализа
-                        ConsoleHandler.PrintXYZAnalysis(ref transactions); break;
+                        ConsoleHandler.PrintXYZAnalysis(transactions); break;
                     case ConsoleKey.D9: // вывод прогноза
-                        ConsoleHandler.PrintForecast(ref transactions); break;
+                        ConsoleHandler.PrintForecast(transactions); break;
                     case ConsoleKey.S: // сохранение данных
-                        FileHandler.WriteData(transactions);
+                        await ConsoleHandler.WriteData(transactions);
                         Console.WriteLine("Данные успешно сохранены");
                         break;
                     case ConsoleKey.Backspace: // выход из программы

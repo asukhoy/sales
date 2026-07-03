@@ -4,7 +4,6 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using project.db;
 using project.DbClasses;
 
 namespace project.edit {
@@ -58,7 +57,7 @@ namespace project.edit {
         /// </summary>
         /// <param name="data">список транзакций</param>
         /// <param name="trans">транзакция</param>
-		public static void Add(ref List<Transaction> data, Transaction trans)
+		public static void Add(List<Transaction> data, Transaction trans)
 		{
             data.Add(trans);
         }
@@ -68,7 +67,7 @@ namespace project.edit {
         /// <param name="id">id транзакции</param>
         /// <param name="data">список транзакций</param>
         /// <exception cref="Exception">выбрасывается в случае, если транзакция не найдена</exception>
-        public static void Delete(ref List<Transaction> data, uint id)
+        public static void Delete(List<Transaction> data, uint id)
         {
             if (GetById(data, id) == -1)
             {
@@ -84,7 +83,7 @@ namespace project.edit {
         /// <param name="el">элемент транзакции</param>
         /// <param name="val">новое значение</param>
         /// <exception cref="ArgumentException">выбрасывается в случае ввода некорректного id</exception>
-        public static async Task Edit(List<Transaction> data, uint id, Elements el, uint val)
+        public static async Task Edit(List<Transaction> data, uint id, Elements el, int val)
         {
             int ind = GetById(data, id);
             if (ind == -1)

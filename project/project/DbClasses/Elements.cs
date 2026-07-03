@@ -3,7 +3,7 @@
 /// <summary>
 /// элементы транзакции
 /// </summary>
-namespace project.db
+namespace project.DbClasses
 {
     public enum Elements
     {

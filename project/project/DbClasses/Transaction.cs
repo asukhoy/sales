@@ -1,91 +1,96 @@
-﻿using project.DbClasses;
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
-namespace project.db
+namespace project.DbClasses
 {
     /// <summary>
-    /// класс, который хранится в бд
+    /// Класс транзакции, адаптированный для Entity Framework Core и PostgreSQL
     /// </summary>
     public class Transaction
     {
-        private static uint _newId = 1; // id добавленной транзакции
-        private static HashSet<uint> _allId = new HashSet<uint>(); // все id 
-        public uint Id { get; private set; } // id транзакции
-        private DateTime _date; // дата транзакции
-        public DateTime Date {
-            get {
-                return _date;
-            }
-            set {
-                if (value.Date <= DateTime.Now.Date && value >= DateTime.Parse("1.07.1992")) // проверка, что такая дата существует
-                { 
-                    _date = value;
-                } 
+        private DateTime _date;
+        private string _currency = string.Empty;
+        private byte _region;
+
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int Id { get; set; }
+
+        public DateTime Date
+        {
+            get => _date;
+            set
+            {
+                if (value.Date <= DateTime.Now.Date && value.Date >= new DateTime(1992, 7, 1))
+                {
+                    // Если дата пришла без указания зоны (Unspecified), принудительно говорим, что это UTC
+                    // Если это локальное время (Local), переводим его в UTC
+                    _date = value.Kind == DateTimeKind.Unspecified
+                        ? DateTime.SpecifyKind(value, DateTimeKind.Utc)
+                        : value.ToUniversalTime();
+                }
                 else
                 {
                     throw new ArgumentException("Неверная дата");
                 }
             }
         }
-        public uint ProdId { get; set; } // id товара
-        public string Name { get; set; } // Наименование товара
-        public uint Count { get; set; } // Количество
-        public double PricePerUnit { get; set; } // Цена за единицу в рублях
-        public double PriceInCurrency {  get; set; } // Цена за единицу в валюте
-        private string _currency; // код валюты
+
+        public int ProdId { get; set; }
+
+        [Required]
+        [MaxLength(255)] // Ограничение длины строки в БД
+        public string Name { get; set; } = string.Empty;
+
+        public int Count { get; set; }
+
+        public double PricePerUnit { get; set; }
+
+        public double PriceInCurrency { get; set; }
+
+        [Required]
+        [MaxLength(3)] // Например, для кодов валют вроде USD, RUB
         public string Currency
         {
-            get { return _currency; }
+            get => _currency;
             set
             {
-                if (CurrencyConverter.IsValid(value)) // проверка существования кода валюты
+                // Проверку оставляем, но EF Core при чтении из БД тоже будет её триггерить.
+                // Убедитесь, что в БД не попадут невалидные данные.
+                if (CurrencyConverter.IsValid(value))
                 {
                     _currency = value;
-                } 
+                }
                 else
                 {
                     throw new ArgumentException("Неверный код валюты");
                 }
             }
         }
-        private byte _region; // регион транзакции
+
         public byte Region
         {
-            get
-            {
-                return _region;
-            }
+            get => _region;
             set
             {
-                if (value >= 1 && value <= 89) // проверка существования региона
+                if (value >= 1 && value <= 89)
                 {
                     _region = value;
-                } 
+                }
                 else
                 {
                     throw new ArgumentException("Неверный регион");
                 }
             }
         }
+        protected Transaction() { }
 
-        /// <summary>
-        /// конструктор класса
-        /// </summary>
-        /// <param name="date">дата транзакции</param>
-        /// <param name="prodId">id товара</param>
-        /// <param name="name">наименование товара</param>
-        /// <param name="count">количество товаров</param>
-        /// <param name="priceInCurrency">цена за шт в валюте</param>
-        /// <param name="currency">код валюты</param>
-        /// <param name="region">номер региона</param>
-        private Transaction(DateTime date, uint prodId, string name, uint count, double priceInCurrency, string currency, double pricePerUnit, byte region, uint id)
+        public Transaction(DateTime date, int prodId, string name, int count, double priceInCurrency, string currency, double pricePerUnit, byte region)
         {
-            Id = id;
+            if (priceInCurrency <= 0)
+                throw new ArgumentException("Цена не может быть <= 0");
+
             Date = date;
             ProdId = prodId;
             Name = name;
@@ -96,43 +101,17 @@ namespace project.db
             Region = region;
         }
 
-        /// <summary>
-        /// Асинхронное создание новой транзакции с автоматическим расчетом курса в рубли
-        /// </summary>
-        /// /// <param name="date">дата транзакции</param>
-        /// <param name="prodId">id товара</param>
-        /// <param name="name">наименование товара</param>
-        /// <param name="count">количество товаров</param>
-        /// <param name="priceInCurrency">цена за шт в валюте</param>
-        /// <param name="currency">код валюты</param>
-        /// <param name="region">номер региона</param>
-        public static async Task<Transaction> CreateAsync(DateTime date, uint prodId, string name, uint count, double priceInCurrency, string currency, byte region, uint? id = null, double pricePerUnit = -1)
-        {
-            if (priceInCurrency <= 0)
-            {
-                throw new ArgumentException("Цена не может быть <= 0");
-            }
-
-            pricePerUnit = pricePerUnit == -1 ? await CurrencyConverter.CurToRub(priceInCurrency, currency, date) : pricePerUnit;
-            if (id == null)
-            {
-                id = _newId++;
-            } else
-            {
-                if (_allId.Contains((uint)id))
-                {
-                    throw new Exception("Не может быть 2 транзакции с одинаковыми id");
-                }
-                _allId.Add((uint)id);
-            }
-
-            // Вызываем приватный конструктор и возвращаем готовый объект
-            return new Transaction(date, prodId, name, count, priceInCurrency, currency, pricePerUnit, region, (uint)id);
-        }
         public override string ToString()
         {
-            return $"{Id};{Date.ToString(new CultureInfo("ru-RU"))[0..10]};{ProdId};" +
-                $"{Name};{Count};{PricePerUnit:f2};{PriceInCurrency:f2};{Currency};{Region}";
+            return $"{Id};{Date:dd.MM.yyyy};{ProdId};{Name};{Count};{PricePerUnit:f2};{PriceInCurrency:f2};{Currency};{Region}";
+        }
+
+        public static async Task<Transaction> CreateAsync(DateTime date, int prodId, string name, int count, double priceInCurrency, string currency, byte region, double price = -1)
+        {
+            // Считаем цену в рублях асинхронно
+            double pricePerUnit = price == -1 ? await CurrencyConverter.CurToRub(priceInCurrency, currency, date) : price;
+
+            return new Transaction(date, prodId, name, count, priceInCurrency, currency, pricePerUnit, region);
         }
     }
 }

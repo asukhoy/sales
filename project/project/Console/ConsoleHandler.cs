@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using project.db;
 using System.Globalization;
 using project.edit;
 using System.Security.Cryptography.X509Certificates;
@@ -18,6 +17,7 @@ namespace project.ConsoleHandler
     /// </summary>
     public static class ConsoleHandler
     {
+        public static FileInterface IOData { get; set; }
         /// <summary>
         /// Вывод изначального меню
         /// </summary>
@@ -116,7 +116,7 @@ namespace project.ConsoleHandler
         /// Вывод информации о транзакциях
         /// </summary>
         /// <param name="transactions">список покупок</param>
-        public static void PrintInfo(ref List<Transaction> transactions)
+        public static void PrintInfo( List<Transaction> transactions)
         {
             Console.WriteLine("1. Вывести информацию таблицей");
             Console.WriteLine("2. Вывести информацию гистограммой");
@@ -127,13 +127,13 @@ namespace project.ConsoleHandler
             switch(key)
             {
                 case ConsoleKey.D1:
-                    PrintTable(ref transactions);
+                    PrintTable( transactions);
                     break;
                 case ConsoleKey.D2:
-                    PrintBarChart(ref transactions);
+                    PrintBarChart( transactions);
                     break;
                 case ConsoleKey.D3:
-                    PrintBreakdownChart(ref transactions);
+                    PrintBreakdownChart( transactions);
                     break;
                 default:
                     break;
@@ -143,7 +143,7 @@ namespace project.ConsoleHandler
         /// Вывод информации о покупках таблицей
         /// </summary>
         /// <param name="transactions">список покупок</param>
-        private static void PrintTable(ref List<Transaction> transactions)
+        private static void PrintTable( List<Transaction> transactions)
         {
             int pageSize = 5;  // Количество строк на экране
             int shift = 0;     // Смещение (прокрутка)
@@ -264,7 +264,7 @@ namespace project.ConsoleHandler
         /// Вывод информации гистограммой
         /// </summary>
         /// <param name="transactions">список транзакций</param>
-        private static void PrintBarChart(ref List<Transaction> transactions)
+        private static void PrintBarChart( List<Transaction> transactions)
         {
             DateTime dt1, dt2;
             dt1 = InputDate("начала");
@@ -312,7 +312,7 @@ namespace project.ConsoleHandler
         /// Выводит информацию с помощью breakdown chart'а
         /// </summary>
         /// <param name="transactions">список транзакций</param>
-        private static void PrintBreakdownChart(ref List<Transaction> transactions)
+        private static void PrintBreakdownChart( List<Transaction> transactions)
         {
             DateTime dt1, dt2;
             dt1 = InputDate("начала");
@@ -394,9 +394,9 @@ namespace project.ConsoleHandler
         /// Вывод ABC анализа
         /// </summary>
         /// <param name="transactions">список транзакций</param>
-        public static void PrintABCAnalysis(ref List<Transaction> transactions)
+        public static void PrintABCAnalysis( List<Transaction> transactions)
         {
-            var abc = Analisator.ABCAnalysis(ref transactions); // ABC анлиз
+            var abc = Analisator.ABCAnalysis(transactions); // ABC анлиз
 
             // создаем таблицу и шапку
             var table = new Table();
@@ -416,9 +416,9 @@ namespace project.ConsoleHandler
         /// Вывод XYZ анализа
         /// </summary>
         /// <param name="transactions">список транзакций</param>
-        public static void PrintXYZAnalysis(ref List<Transaction> transactions)
+        public static void PrintXYZAnalysis( List<Transaction> transactions)
         {
-            var xyz = Analisator.XYZAnalysis(ref transactions); // XYZ анлиз
+            var xyz = Analisator.XYZAnalysis(transactions); // XYZ анлиз
 
             // создаем таблицу и шапку
             var table = new Table();
@@ -438,9 +438,9 @@ namespace project.ConsoleHandler
         /// Вывод прогноза продаж на следующий месяц
         /// </summary>
         /// <param name="transactions">список транзакций</param>
-        public static void PrintForecast(ref List<Transaction> transactions)
+        public static void PrintForecast( List<Transaction> transactions)
         {
-            var fcast = Analisator.Forecast(ref transactions); // прогноз
+            var fcast = Analisator.Forecast(transactions); // прогноз
 
             // создание таблицы и шапки
             var table = new Table();
@@ -477,28 +477,22 @@ namespace project.ConsoleHandler
         /// <returns>смогла ли программа загрузить данные</returns>
         public static async Task<List<Transaction>> DownloadData()
         {
-            Console.WriteLine("Введите название файла");
-            string path = @"..\..\..\db\" + Console.ReadLine();
-            // проверка существования файла
-            try
-            {
-                FileHandler.CurrentPath = path;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message);
-            }
             // попытка выгрузить данные из файла
             List<Transaction> transactions = new List<Transaction>();
             try
             {
-                transactions = await FileHandler.DownloadData();
+                transactions = await IOData.DownloadData();
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.Message);
             }
             return transactions;
+        }
+
+        public static async Task WriteData(List<Transaction> transactions)
+        {
+            await IOData.WriteData(transactions);
         }
         /// <summary>
         /// Добавление транзакции
@@ -526,16 +520,16 @@ namespace project.ConsoleHandler
 
             // id товара
             Console.WriteLine("Введите id товара");
-            uint prodId;
+            int prodId;
             s = Console.ReadLine();
             if (s == "-1") { return; }
-            f = uint.TryParse(s, out prodId);
+            f = int.TryParse(s, out prodId);
             while (!f)
             {
                 if (s == "-1") { return; }
                 PrintAddError();
                 s = Console.ReadLine();
-                f = uint.TryParse(s, out prodId);
+                f = int.TryParse(s, out prodId);
             }
 
             // название
@@ -544,17 +538,17 @@ namespace project.ConsoleHandler
             if (s == "-1") { return; }
 
             // количество
-            uint count;
+            int count;
             Console.WriteLine("Введите количество товара");
             s = Console.ReadLine();
             if (s == "-1") { return; }
-            f = uint.TryParse(s, out count);
+            f = int.TryParse(s, out count);
             while (!f)
             {
                 if (s == "-1") { return; }
                 PrintAddError();
                 s = Console.ReadLine();
-                f = uint.TryParse(s, out count);
+                f = int.TryParse(s, out count);
             }
 
             // цена за единицу
@@ -592,7 +586,7 @@ namespace project.ConsoleHandler
             try
             {
                 var trans = await Transaction.CreateAsync(dt, prodId, name, count, price, currency, reg);
-                TransactionsHandler.Add(ref data, trans);
+                TransactionsHandler.Add(data, trans);
             }
             catch (Exception ex)
             {
@@ -603,7 +597,7 @@ namespace project.ConsoleHandler
         /// Удаление транзакции
         /// </summary>
         /// <param name="data">список транзакций</param>
-        public static void Delete(ref List<Transaction> data)
+        public static void Delete(List<Transaction> data)
         {
             Console.WriteLine("Введите id транзакции, которую хотите удалить");
             uint id;
@@ -618,7 +612,7 @@ namespace project.ConsoleHandler
             // попытка удалить транзакцию
             try
             {
-                TransactionsHandler.Delete(ref data, id);
+                TransactionsHandler.Delete(data, id);
                 Console.WriteLine("Удаление успешно завершено");
             }
             catch (Exception e)

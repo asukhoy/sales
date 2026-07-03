@@ -5,15 +5,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace project.db
+namespace project.DbClasses
 {
-    public static class FileHandler
+    public class FileHandler : FileInterface
     {
-        private static string _currentPath = "";
+        private string _currentPath;
         /// <summary>
         /// Присваивание пути файла
         /// </summary>
-        public static string CurrentPath
+        public string CurrentPath
         {
             get { return _currentPath; }
             set
@@ -27,12 +27,19 @@ namespace project.db
                 }
             }
         }
+
+        public FileHandler()
+        {
+            _currentPath = "";
+        }
         /// <summary>
         /// загрузка данных из файла
         /// </summary>
         /// <exception cref="FileNotFoundException">выбрасываем, если пользователь не ввел путь до файла</exception>
-        public static async Task<List<Transaction>> DownloadData()
+        public async Task<List<Transaction>> DownloadData()
         {
+            Console.WriteLine("Введите название файла");
+            _currentPath = @"..\..\..\db\" + Console.ReadLine();
             if (string.IsNullOrEmpty(_currentPath))
             {
                 throw new FileNotFoundException("Файл не загружен");
@@ -53,11 +60,11 @@ namespace project.db
                     throw new ArgumentException($"Неверная запись транзакции в строке {i + 1}");
                 }
 
-                bool f = uint.TryParse(s[0], out uint id);
+                bool f = int.TryParse(s[0], out int id);
                 f &= DateTime.TryParse(s[1], out DateTime dt);
-                f &= uint.TryParse(s[2], out uint prodId);
+                f &= int.TryParse(s[2], out int prodId);
                 string name = s[3];
-                f &= uint.TryParse(s[4], out uint count);
+                f &= int.TryParse(s[4], out int count);
                 f &= double.TryParse(s[5], out double price); // цена в рублях из файла
                 f &= double.TryParse(s[6], out double priceCur);
                 string currency = s[7];
@@ -68,7 +75,7 @@ namespace project.db
                     throw new ArgumentException($"Неверный формат данных в строке {i + 1}");
                 }
 
-                var task = Transaction.CreateAsync(dt, prodId, name, count, priceCur, currency, reg, id, price);
+                var task = Transaction.CreateAsync(dt, prodId, name, count, priceCur, currency, reg, price);
                 tasks.Add(task);
             }
 
@@ -77,17 +84,23 @@ namespace project.db
             return transactions.ToList();
         }
         /// <summary>
-        /// Сохранение данных в файл
+        /// Асинхронное сохранение данных в файл .csv
         /// </summary>
-        /// <param name="data">транзакции</param>
-        public static void WriteData(List<Transaction> data) { 
+        public async Task WriteData(List<Transaction> data)
+        {
+            if (string.IsNullOrEmpty(_currentPath))
+                throw new FileNotFoundException("Файл не загружен");
+
             int n = data.Count;
             string[] output = new string[n];
+
             for (int i = 0; i < n; ++i)
             {
                 output[i] = data[i].ToString();
             }
-            File.WriteAllLines(_currentPath, output);
+
+            // Асинправленная запись в файл, не блокирующая поток
+            await File.WriteAllLinesAsync(_currentPath, output);
         }
     }
 }

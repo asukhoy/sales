@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using project.db;
+using project.DbClasses;
 
 namespace project.Analysis
 {
@@ -17,7 +17,7 @@ namespace project.Analysis
         /// </summary>
         /// <param name="transactions">список транзакций</param>
         /// <returns>разделение товаров на категории</returns>
-        public static Dictionary<string, string> ABCAnalysis(ref List<Transaction> transactions)
+        public static Dictionary<string, string> ABCAnalysis(List<Transaction> transactions)
         {
             // создаем список с результатом
             var res = new Dictionary<string, List<string>>() 
@@ -65,7 +65,7 @@ namespace project.Analysis
         /// </summary>
         /// <param name="transactions">список транзакций</param>
         /// <returns>разделение товаров на категории</returns>
-        public static Dictionary<string, string> XYZAnalysis(ref List<Transaction> transactions)
+        public static Dictionary<string, string> XYZAnalysis(List<Transaction> transactions)
         {
             // создаем список с результатом
             var res = new Dictionary<string, List<string>>()
@@ -113,7 +113,7 @@ namespace project.Analysis
         /// </summary>
         /// <param name="transactions">список продаж</param>
         /// <returns>предсказание продаж</returns>
-        public static Dictionary<string, uint> Forecast(ref List<Transaction> transactions)
+        public static Dictionary<string, uint> Forecast(List<Transaction> transactions)
         {
             var res = new Dictionary<string, uint>(); // создание словаря с ответом
 
