@@ -405,3 +405,4 @@ efbundle
 _efmigrationshistory
 
 *.csv
+*.vs
